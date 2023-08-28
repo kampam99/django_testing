@@ -1,62 +1,45 @@
+import pytest
+
+from django.urls import reverse
 from http import HTTPStatus
 
-import pytest
-from django.urls import reverse
+from pytest_django.asserts import assertRedirects
+from news.pytest_tests.conftest import (ADMIN, AUTHOR, CLIENT,
+                                        HOME_URL, DETAIL_URL,
+                                        LOGIN_URL, LOGOUT_URL, SIGNUP_URL,
+                                        EDIT_URL, DELETE_URL)
 
 
-anon_client = pytest.lazy_fixture('anon_client')
-author_client = pytest.lazy_fixture('author_client')
-another_author_client = pytest.lazy_fixture('another_author_client')
-news = pytest.lazy_fixture('news')
-comment = pytest.lazy_fixture('comment')
-LOGIN_URL = reverse('users:login')
-
-
-@pytest.mark.django_db
 @pytest.mark.parametrize(
-    'page, obj, client, status', (
-        ('news:home', None, anon_client, HTTPStatus.OK),
-        ('news:detail', news, anon_client, HTTPStatus.OK),
-        ('users:login', None, anon_client, HTTPStatus.OK),
-        ('users:logout', None, anon_client, HTTPStatus.OK),
-        ('users:signup', None, anon_client, HTTPStatus.OK),
-        ('news:detail', news, author_client, HTTPStatus.OK),
-        ('news:edit', comment, anon_client, HTTPStatus.FOUND),
-        ('news:edit', comment, another_author_client, HTTPStatus.NOT_FOUND),
-        ('news:edit', comment, author_client, HTTPStatus.OK),
-        ('news:delete', comment, anon_client, HTTPStatus.FOUND),
-        ('news:delete', comment, another_author_client, HTTPStatus.NOT_FOUND),
-        ('news:delete', comment, author_client, HTTPStatus.OK),
+    'url, parametrized_client, status',
+    (
+        (HOME_URL, CLIENT, HTTPStatus.OK),
+        (DETAIL_URL, CLIENT, HTTPStatus.OK),
+        (LOGIN_URL, CLIENT, HTTPStatus.OK),
+        (LOGOUT_URL, CLIENT, HTTPStatus.OK),
+        (SIGNUP_URL, CLIENT, HTTPStatus.OK),
+        (EDIT_URL, AUTHOR, HTTPStatus.OK),
+        (DELETE_URL, AUTHOR, HTTPStatus.OK),
+        (EDIT_URL, ADMIN, HTTPStatus.NOT_FOUND),
+        (DELETE_URL, ADMIN, HTTPStatus.NOT_FOUND),
     ),
 )
-def test_pages_status_code(
-    page,
-    obj,
-    client,
-    status
-):
-    if obj:
-        url = reverse(page, args=[obj.id])
-    else:
-        url = reverse(page)
-    response = client.get(url)
+def test_pages_availability_for_anonymous_user(
+        url, parametrized_client, status, comment):
+    response = parametrized_client.get(url)
     assert response.status_code == status
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize(
-    'page, obj, client', (
-        ('news:edit', news, anon_client),
-        ('news:delete', news, anon_client),
-    ),
+    'name, args',
+    (
+        ('news:edit', pytest.lazy_fixture('comment_id_for_args')),
+        ('news:delete', pytest.lazy_fixture('comment_id_for_args')),
+    )
 )
-def test_redirects(page, obj, client):
-    """
-    4) При попытке перейти на страницу редактирования или удаления
-       комментария анонимный пользователь перенаправляется на
-       страницу авторизации.
-    """
-    url = reverse(page, args=[obj.id])
-    expected_url = f'{LOGIN_URL}?next={url}'
+def test_redirects(client, name, args):
+    login_url = reverse('users:login')
+    url = reverse(name, args=args)
+    expected_url = f'{login_url}?next={url}'
     response = client.get(url)
-    assert expected_url == response.url
+    assertRedirects(response, expected_url)
