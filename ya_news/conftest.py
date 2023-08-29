@@ -1,73 +1,81 @@
 from datetime import datetime, timedelta
+from random import choice
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
 from django.test import Client
+from django.urls import reverse
 
+from news.forms import BAD_WORDS
 from news.models import News, Comment
 
+
 User = get_user_model()
+
+NEWS_BASE_URL = 'news:'
+USERS_BASE_URL = 'users:'
 
 
 @pytest.fixture
 def author():
-    author = User.objects.filter(username='author').first()
-    if not author:
-        author = User.objects.create(username='author')
-    return author
+    return User.objects.get_or_create(username='author')[0]
+
+
+@pytest.fixture
+def another_author():
+    return User.objects.get_or_create(username='author_2')[0]
 
 
 @pytest.fixture
 def news():
-    news = News.objects.create(
-        title='Тестовый заголовок',
-        text='Тестовый текст',
-    )
-    return news
+    return News.objects.get_or_create(
+        title='Заголовок', text='Текст'
+    )[0]
 
 
 @pytest.fixture
-def author_client():
-    author = User.objects.filter(username='author').first()
-    if not author:
-        author = User.objects.create(username='author')
+def author_client(author):
     author_client = Client()
     author_client.force_login(author)
     return author_client
 
 
 @pytest.fixture
-def another_author_client():
-    author = User.objects.filter(username='author_2').first()
-    if not author:
-        author = User.objects.create(username='author_2')
-    author_client = Client()
-    author_client.force_login(author)
-    return author_client
+def another_author_client(another_author):
+    another_author = User.objects.get_or_create(
+        username=another_author.username)[0]
+    client = Client()
+    client.force_login(another_author)
+    return client
 
 
 @pytest.fixture
 def anon_client():
-    anon_client = Client()
-    return anon_client
+    return Client()
 
 
 @pytest.fixture
-def comment(author, news):
-    comment = Comment.objects.create(
+def comment(news, author):
+    return Comment.objects.get_or_create(
         news=news,
         author=author,
-        text='Текст комментария'
-    )
-    return comment
+        text='Текст'
+    )[0]
 
 
 @pytest.fixture
 def form_data():
     return {
-        'text': 'Новый текст комментария'
+        'text': 'Текст'
+    }
+
+
+@pytest.fixture
+def bad_words_data():
+    return {
+        'text': f'Тестовый текст, содержащий {choice(BAD_WORDS)}'
     }
 
 
@@ -94,3 +102,104 @@ def many_comments(news, author):
         )
         comment.created = now + timedelta(days=index)
         comment.save()
+
+
+@pytest.fixture
+def users_login_url():
+    return reverse(f'{USERS_BASE_URL}login')
+
+
+@pytest.fixture
+def users_logout_url():
+    return reverse(f'{USERS_BASE_URL}logout')
+
+
+@pytest.fixture
+def users_signup_url():
+    return reverse(f'{USERS_BASE_URL}signup')
+
+
+@pytest.fixture
+def news_home_url():
+    return reverse(f'{NEWS_BASE_URL}home')
+
+
+@pytest.fixture
+def news_list_url():
+    return reverse(f'{NEWS_BASE_URL}list')
+
+
+@pytest.fixture
+def news_success_url():
+    return reverse(f'{NEWS_BASE_URL}success')
+
+
+@pytest.fixture
+def news_home_url():
+    return reverse(f'{NEWS_BASE_URL}home')
+
+
+@pytest.fixture
+def news_edit_url():
+    return reverse(f'{NEWS_BASE_URL}edit')
+
+
+@pytest.fixture
+def news_detail_url(news):
+    return reverse(f'{NEWS_BASE_URL}detail', args=(news.pk, ))
+
+
+@pytest.fixture
+def news_edit_url(comment):
+    return reverse(f'{NEWS_BASE_URL}edit', args=(comment.pk, ))
+
+
+@pytest.fixture
+def news_delete_url(comment):
+    return reverse(f'{NEWS_BASE_URL}delete', args=(comment.pk, ))
+
+
+@pytest.fixture
+def news_list_redirect_url(users_login_url):
+    return f'{users_login_url}?next={reverse(f"{NEWS_BASE_URL}list")}'
+
+
+@pytest.fixture
+def news_success_redirect_url(users_login_url):
+    return f'{users_login_url}?next={reverse(f"{NEWS_BASE_URL}success")}'
+
+
+@pytest.fixture
+def news_add_redirect_url(users_login_url):
+    return f'{users_login_url}?next={reverse(f"{NEWS_BASE_URL}add")}'
+
+
+@pytest.fixture
+def news_detail_redirect_url(users_login_url, comment):
+    next_url = reverse(f"{NEWS_BASE_URL}detail", args=(comment.pk,))
+    return f"{users_login_url}?next={next_url}"
+
+
+@pytest.fixture
+def news_comment_hash_anchor_redirect(news):
+    return reverse(f'{NEWS_BASE_URL}detail', args=(news.pk, )) + '#comments'
+
+
+@pytest.fixture
+def news_comment_redirect(users_login_url, news_detail_url):
+    return f'{users_login_url}?next={news_detail_url}'
+
+
+@pytest.fixture
+def news_comment_anchor_redirect(news_detail_url):
+    return news_detail_url + '#comments'
+
+
+@pytest.fixture
+def news_edit_redirect_url(users_login_url, news_edit_url):
+    return f'{users_login_url}?next={news_edit_url}'
+
+
+@pytest.fixture
+def news_delete_redirect_url(users_login_url, news_delete_url):
+    return f'{users_login_url}?next={news_delete_url}'
