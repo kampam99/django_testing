@@ -1,56 +1,41 @@
 import pytest
-from django.conf import settings
-
+from django.contrib.auth import get_user_model
 from news.forms import CommentForm
-
+User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 
 
-def test_news_count(client, many_news, news_home_url):
-    news = client.get(news_home_url).context['object_list']
-    news_count = len(news)
-    assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
+def test_news_count(all_news, client, url_home):
+    response = client.get(url_home)
+    object_list = response.context['object_list']
+    assert len(object_list) == len(all_news)
 
 
-def test_news_order(client, news_home_url):
-    news = list(client.get(
-        news_home_url
-    ).context['object_list'])
-    news_sorted = sorted(
-        news,
-        key=lambda news: news.date,
-        reverse=True
+def test_news_order(all_news, client, url_home):
+    response = client.get(url_home)
+    object_list = response.context['object_list']
+    all_dates = [news.date for news in object_list]
+    sorted_dates = sorted(all_dates, reverse=True)
+    assert all_dates == sorted_dates
+
+
+@pytest.mark.usefixtures('created_comment')
+def test_comments_order(client, url_detail):
+    response = client.get(url_detail)
+    object_list_comments = list(response.context['news'].comment_set.all())
+    sorted_comments = sorted(
+        object_list_comments, key=lambda comment: comment.created
     )
-    assert news == news_sorted
+    assert object_list_comments == sorted_comments
 
 
-def test_comments_order(client, news_detail_url):
-    comments = list(
-        client.get(news_detail_url).context['news'].comment_set.all()
-    )
-    comments_sorted = sorted(
-        comments,
-        key=lambda comment: comment.created
-    )
-    assert comments == comments_sorted
+def test_anonymous_client_has_no_form(news, client, url_detail):
+    response = client.get(url_detail)
+    assert 'form' not in response.context
 
 
-@pytest.mark.parametrize(
-    'url, client, has_access',
-    (
-        (pytest.lazy_fixture('news_detail_url'),
-         pytest.lazy_fixture('author_client'), True),
-        (pytest.lazy_fixture('news_detail_url'),
-         pytest.lazy_fixture('anon_client'), False)
-    )
-)
-def test_comment_form_availability_for_different_users(
-        url,
-        client,
-        has_access
-):
-    context = client.get(url).context
-    assert has_access == ('form' in context)
-    if has_access:
-        assert isinstance(context['form'], CommentForm)
+def test_authorized_client_has_form(news, author_client, url_detail):
+    response = author_client.get(url_detail)
+    assert 'form' in response.context
+    assert isinstance(response.context['form'], CommentForm)
