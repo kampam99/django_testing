@@ -1,91 +1,87 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, Client
+from django.test import Client, TestCase
 from django.urls import reverse
 
-from ..models import Note
-
+from notes.models import Note
 
 User = get_user_model()
 
-CONST_SLUG = 'slug'
-NOTES_BASE_URL = 'notes:'
-USERS_BASE_URL = 'users:'
-
-OK = HTTPStatus.OK
-NOT_FOUND = HTTPStatus.NOT_FOUND
-
-USERS_LOGIN_URL = reverse(f'{USERS_BASE_URL}login')
-USERS_LOGOUT_URL = reverse(f'{USERS_BASE_URL}logout')
-USERS_SIGNUP_URL = reverse(f'{USERS_BASE_URL}signup')
-NOTES_HOME_URL = reverse(f'{NOTES_BASE_URL}home')
-NOTES_LIST_URL = reverse(f'{NOTES_BASE_URL}list')
-NOTES_SUCCESS_URL = reverse(f'{NOTES_BASE_URL}success')
-NOTES_ADD_URL = reverse(f'{NOTES_BASE_URL}add')
-NOTES_DETAIL_URL = reverse(f'{NOTES_BASE_URL}detail', args=(CONST_SLUG, ))
-NOTES_EDIT_URL = reverse(f'{NOTES_BASE_URL}edit', args=(CONST_SLUG, ))
-NOTES_DELETE_URL = reverse(f'{NOTES_BASE_URL}delete', args=(CONST_SLUG, ))
-
-NOTES_LIST_REDIRECT_URL = f'{USERS_LOGIN_URL}?next={NOTES_LIST_URL}'
-NOTES_SUCCESS_REDIRECT_URL = f'{USERS_LOGIN_URL}?next={NOTES_SUCCESS_URL}'
-NOTES_ADD_REDIRECT_URL = f'{USERS_LOGIN_URL}?next={NOTES_ADD_URL}'
-NOTES_DETAIL_REDIRECT_URL = f'{USERS_LOGIN_URL}?next={NOTES_DETAIL_URL}'
-NOTES_EDIT_REDIRECT_URL = f'{USERS_LOGIN_URL}?next={NOTES_EDIT_URL}'
-NOTES_DELETE_REDIRECT_URL = f'{USERS_LOGIN_URL}?next={NOTES_DELETE_URL}'
+SLUG = 'slug'
+URL_NOTES_HOME = reverse('notes:home')
+URL_NOTES_ADD = reverse('notes:add')
+URL_NOTES_EDIT = reverse('notes:edit', args=(SLUG,))
+URL_NOTES_DETAIL = reverse('notes:detail', args=(SLUG,))
+URL_NOTES_DELETE = reverse('notes:delete', args=(SLUG,))
+URL_NOTES_LIST = reverse('notes:list')
+URL_NOTES_SUCCESS = reverse('notes:success')
+URL_USERS_LOGIN = reverse('users:login')
+URL_USERS_LOGOUT = reverse('users:logout')
+URL_USERS_SINGIN = reverse('users:signup')
+URL_REDIRECT_ADD = f'{URL_USERS_LOGIN}?next={URL_NOTES_ADD}'
+URL_REDIRECT_SUCCESS = f'{URL_USERS_LOGIN}?next={URL_NOTES_SUCCESS}'
+URL_REDIRECT_LIST = f'{URL_USERS_LOGIN}?next={URL_NOTES_LIST}'
+URL_REDIRECT_DETAIL = f'{URL_USERS_LOGIN}?next={URL_NOTES_DETAIL}'
+URL_REDIRECT_EDIT = f'{URL_USERS_LOGIN}?next={URL_NOTES_EDIT}'
+URL_REDIRECT_DELETE = f'{URL_USERS_LOGIN}?next={URL_NOTES_DELETE}'
 
 
 class TestRoutes(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.anon = User.objects.create(username='anon')
-        cls.reader = User.objects.create(username='reader')
-        cls.author = User.objects.create(username='author')
+        cls.author = User.objects.create(username='Тестовый автор')
+        cls.reader = User.objects.create(username='Тестовый читатель')
         cls.note = Note.objects.create(
             title='Заголовок',
             text='Текст',
-            slug='slug',
-            author=cls.author,
-        )
-        (
-            cls.anon_client,
-            cls.reader_client,
-            cls.author_client
-        ) = Client(), Client(), Client()
+            slug=SLUG,
+            author=cls.author)
 
-        cls.reader_client.force_login(cls.reader)
-        cls.author_client.force_login(cls.author)
+    def setUp(self):
+        self.client_author = Client()
+        self.client_author.force_login(self.author)
+        self.client_reader = Client()
+        self.client_reader.force_login(self.reader)
 
-    def test_response_codes(self):
-        data = (
-            (NOTES_HOME_URL, self.anon_client, OK),
-            (USERS_LOGIN_URL, self.anon_client, OK),
-            (USERS_LOGOUT_URL, self.anon_client, OK),
-            (USERS_SIGNUP_URL, self.anon_client, OK),
-            (NOTES_LIST_URL, self.reader_client, OK),
-            (NOTES_SUCCESS_URL, self.reader_client, OK),
-            (NOTES_ADD_URL, self.reader_client, OK),
-            (NOTES_DETAIL_URL, self.author_client, OK),
-            (NOTES_EDIT_URL, self.author_client, OK),
-            (NOTES_DELETE_URL, self.author_client, OK),
-            (NOTES_DETAIL_URL, self.reader_client, NOT_FOUND),
-            (NOTES_EDIT_URL, self.reader_client, NOT_FOUND),
-            (NOTES_DELETE_URL, self.reader_client, NOT_FOUND),
+    def test_overall_avaliability(self):
+        avaliability_data = (
+            (URL_NOTES_HOME, self.client_reader, HTTPStatus.OK),
+            (URL_NOTES_HOME, self.client_author, HTTPStatus.OK),
+            (URL_USERS_LOGIN, self.client_reader, HTTPStatus.OK),
+            (URL_USERS_LOGIN, self.client_author, HTTPStatus.OK),
+            (URL_USERS_SINGIN, self.client_reader, HTTPStatus.OK),
+            (URL_USERS_SINGIN, self.client_author, HTTPStatus.OK),
+            (URL_NOTES_EDIT, self.client_reader, HTTPStatus.NOT_FOUND),
+            (URL_NOTES_EDIT, self.client_author, HTTPStatus.OK),
+            (URL_NOTES_DETAIL, self.client_reader, HTTPStatus.NOT_FOUND),
+            (URL_NOTES_DETAIL, self.client_author, HTTPStatus.OK),
+            (URL_NOTES_DELETE, self.client_reader, HTTPStatus.NOT_FOUND),
+            (URL_NOTES_DELETE, self.client_author, HTTPStatus.OK),
+            (URL_USERS_LOGOUT, self.client_author, HTTPStatus.OK),
+            (URL_USERS_LOGOUT, self.client_reader, HTTPStatus.OK),
         )
-        for url, client, status in data:
+        for url, client, status in avaliability_data:
             with self.subTest(url=url, client=client, status=status):
                 response = client.get(url)
                 self.assertEqual(response.status_code, status)
 
-    def test_redirects(self):
-        data = (
-            (NOTES_LIST_URL, NOTES_LIST_REDIRECT_URL),
-            (NOTES_SUCCESS_URL, NOTES_SUCCESS_REDIRECT_URL),
-            (NOTES_ADD_URL, NOTES_ADD_REDIRECT_URL),
-            (NOTES_DETAIL_URL, NOTES_DETAIL_REDIRECT_URL),
-            (NOTES_EDIT_URL, NOTES_EDIT_REDIRECT_URL),
-            (NOTES_DELETE_URL, NOTES_DELETE_REDIRECT_URL)
+    def test_overall_redirect(self):
+        redirect_data = (
+            (URL_NOTES_SUCCESS, self.client,
+             URL_REDIRECT_SUCCESS),
+            (URL_NOTES_ADD, self.client,
+             URL_REDIRECT_ADD),
+            (URL_NOTES_LIST, self.client,
+             URL_REDIRECT_LIST),
+            (URL_NOTES_DETAIL, self.client,
+             URL_REDIRECT_DETAIL),
+            (URL_NOTES_EDIT, self.client,
+             URL_REDIRECT_EDIT),
+            (URL_NOTES_DELETE, self.client,
+             URL_REDIRECT_DELETE)
         )
-        for url, redirect in data:
-            with self.subTest(user=self.anon, url=url):
-                self.assertRedirects(self.anon_client.get(url), redirect)
+        for url, user, redirect_url in redirect_data:
+            with self.subTest(url=url, user=user, redirect_url=redirect_url):
+                response = user.get(url)
+                self.assertRedirects(response, redirect_url)
