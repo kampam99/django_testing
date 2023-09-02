@@ -55,3 +55,13 @@ class TestContent(TestCase):
         self.assertEqual(note.title, self.note.title)
         self.assertEqual(note.slug, self.note.slug)
         self.assertEqual(note.author, self.note.author)
+
+    def test_non_author_cannot_access_author_note(self):
+        non_author = User.objects.create(username='Не автор')
+        non_author_client = Client()
+        non_author_client.force_login(non_author)
+
+        response = non_author_client.get(URL_NOTES_LIST)
+        object_list = response.context['object_list']
+
+        self.assertNotIn(self.note, object_list)

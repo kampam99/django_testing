@@ -16,8 +16,6 @@ EDIT_URL = pytest.lazy_fixture('edit_url')
 LOGIN_URL = reverse('users:login')
 ADMIN_CLIENT = pytest.lazy_fixture('admin_client')
 AUTHOR_CLIENT = pytest.lazy_fixture('author_client')
-EDIT_REDIRECT_URL = f'{LOGIN_URL}?next={EDIT_URL}'
-DELETE_REDIRECT_URL = f'{LOGIN_URL}?next={[(DELETE_URL)]}'
 
 
 @pytest.mark.parametrize(

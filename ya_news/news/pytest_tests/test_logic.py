@@ -13,10 +13,10 @@ def test_anonymous_user_cant_create_comment(client,
                                             form_data,
                                             detail_url,
                                             news_detail_redirect_url):
-    all_initial_comments = set(Comment.objects.all())
+    all_initial_comments = Comment.objects.count()
     response = client.post(detail_url, data=form_data)
     assertRedirects(response, news_detail_redirect_url)
-    all_comments = set(Comment.objects.all())
+    all_comments = Comment.objects.count()
     assert all_initial_comments == all_comments
 
 

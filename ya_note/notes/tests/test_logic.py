@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
+
 from django.test import Client, TestCase
 from django.urls import reverse
-
 from http import HTTPStatus
 from pytils.translit import slugify
 
@@ -45,9 +45,9 @@ class TestNoteCreation(TestCase):
         }
 
     def test_anonymous_user_cant_create_notes(self):
-        initial_notes = set(Note.objects.all())
+        initial_notes = set(Note.objects)
         self.client.post(URL_NOTES_ADD, data=self.form_data)
-        notes = set(Note.objects.all())
+        notes = set(Note.objects)
         self.assertEqual(notes, initial_notes)
 
     def test_user_can_create_notes(self):
