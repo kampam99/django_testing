@@ -14,8 +14,11 @@ REGISTERED_CLIENT = pytest.lazy_fixture('author_client')
 
 @pytest.mark.usefixtures('many_news')
 def test_news_count(client):
-    assert len(client.get(HOME_URL).
-               context['object_list']) == settings.NEWS_COUNT_ON_HOME_PAGE
+    assert (
+        client.get(HOME_URL)
+        .context['object_list']
+        .count() == settings.NEWS_COUNT_ON_HOME_PAGE
+    )
 
 
 @pytest.mark.usefixtures('many_news')
