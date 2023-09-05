@@ -7,7 +7,6 @@ from news.forms import CommentForm
 pytestmark = pytest.mark.django_db
 
 HOME_URL = reverse('news:home')
-DETAIL_URL = pytest.lazy_fixture('detail_url')
 ANONYMOUS_CLIENT = pytest.lazy_fixture('client')
 REGISTERED_CLIENT = pytest.lazy_fixture('author_client')
 
@@ -41,3 +40,11 @@ def test_comment_form_availability_for_different_users(
     assert has_access == ('form' in context)
     if has_access:
         assert isinstance(context['form'], CommentForm)
+
+
+pytest.mark.django_db
+
+
+def test_comments_order(client, detail_url):
+    all_comments = client.get(detail_url).context['news'].comment_set.all()
+    assert list(all_comments) == list(all_comments.order_by('created'))
