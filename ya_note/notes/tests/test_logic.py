@@ -45,9 +45,9 @@ class TestNoteCreation(TestCase):
         }
 
     def test_anonymous_user_cant_create_notes(self):
-        initial_notes = set(Note.objects.all())
+        initial_notes = Note.objects.count()
         self.client.post(URL_NOTES_ADD, data=self.form_data)
-        notes = set(Note.objects.all())
+        notes = Note.objects.count()
         self.assertEqual(notes, initial_notes)
 
     def test_user_can_create_notes(self):

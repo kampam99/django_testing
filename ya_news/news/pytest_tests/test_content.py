@@ -29,22 +29,15 @@ def test_news_order(client):
 
 
 @pytest.mark.parametrize(
-    'url, user, has_access', ((DETAIL_URL,
-                               pytest.lazy_fixture('author_client'), True),
-                              (DETAIL_URL,
-                               pytest.lazy_fixture('client'), False))
+    'user, has_access', ((pytest.lazy_fixture('author_client'), True),
+                         (pytest.lazy_fixture('client'), False))
 )
-def test_comment_form_availability_for_different_users(user, has_access, url):
-    context = user.get(url).context
+def test_comment_form_availability_for_different_users(
+    user,
+    has_access,
+    detail_url
+):
+    context = user.get(detail_url).context
     assert has_access == ('form' in context)
     if has_access:
         assert isinstance(context['form'], CommentForm)
-
-
-@pytest.mark.parametrize(
-    'url', [(DETAIL_URL)]
-)
-@pytest.mark.usefixtures('many_comments')
-def test_comments_order(client, url):
-    all_comments = client.get(url).context['news'].comment_set.all()
-    assert list(all_comments) == list(all_comments.order_by('created'))

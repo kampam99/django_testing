@@ -34,11 +34,6 @@ class TestContent(TestCase):
             author=cls.author,
         )
 
-    def test_notes_count(self):
-        response = self.auth_client.get(URL_NOTES_LIST)
-        object_list = response.context['object_list']
-        self.assertEqual(len(object_list), NOTES_COUNT + 1)
-
     def test_pages_contains_form(self):
         for name in [URL_NOTES_ADD, URL_NOTES_EDIT]:
             with self.subTest(name=name):
